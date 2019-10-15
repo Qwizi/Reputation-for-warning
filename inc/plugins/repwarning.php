@@ -20,7 +20,7 @@ function repwarning_info()
 }
 
 function repwarning_install() {
-   global $PL, $lang;
+   global $PL, $lang, $mybb;
 
    if (!file_exists(PLUGINLIBRARY)) {
       flash_message("PluginLibrary is missing.", "error");
@@ -29,22 +29,30 @@ function repwarning_install() {
 
    $PL or require_once PLUGINLIBRARY;
 
+   $lang->load('repwarning');
+
    $PL->settings(
       'repwarning',
       'Reputation for warning',
       'Settings of reputation of warning',
       [
-         'bot_id' => [
-            'title' => 'Bot\'s ID',
-            'description' => 'Id of a bot',
+         'id' => [
+            'title' => $lang->id_t,
+            'description' => $lang->id_d,
             'optionscode' => 'numeric',
             'value' => 1
          ],
          'comment' => [
-            'title' => 'Comment',
-            'description' => 'Reputation comment',
+            'title' => $lang->comment_t,
+            'description' => $lang->comment_d,
             'optionscode' => 'textarea',
             'value' => 'Penalty points for a warning' 
+         ],
+         'default' => [
+            'title' => $lang->default_t,
+            'description' => $lang->default_d,
+            'optionscode' => 'numeric',
+            'value' => '-10'
          ]
       ]
    );
@@ -55,8 +63,8 @@ function repwarning_install() {
       [
          '' => '
 <tr>
-	<td class="trow1" style="width: 20%; vertical-align: top;"><strong>Value of reputation points</strong></td>
-	<td class="trow1"><input name="rep_points" class="textbox" type="text" size="2" value="-10" /></td>
+	<td class="trow1" style="width: 20%; vertical-align: top;"><strong>{$lang->rep_points}</strong></td>
+	<td class="trow1"><input name="rep_points" class="textbox" type="text" size="2" value="{$mybb->settings[\'repwarning_default\']}" /></td>
 </tr>
 '
       ]
@@ -87,7 +95,10 @@ function repwarning_is_installed()
 }
 
 function repwarning_warn_end() {
-   global $templates, $repwarning;
+   global $mybb, $lang, $templates, $repwarning;
+
+   $lang->load('repwarning');
+
    eval("\$repwarning = \"" . $templates->get("repwarning") . "\";");
 }
 
@@ -98,7 +109,7 @@ function repwarning_do_warn_end() {
    if (!empty($mybb->input['rep_points'])) {
       $reputation = [
          'uid' => $warning['uid'],
-         'adduid' => $mybb->settings['repwarning_bot_id'],
+         'adduid' => $mybb->settings['repwarning_id'],
          'reputation' => $mybb->get_input('rep_points', MyBB::INPUT_INT),
          'dateline' => TIME_NOW,
          'comments' => $db->escape_string($mybb->settings['repwarning_comment'])
@@ -107,7 +118,7 @@ function repwarning_do_warn_end() {
       $db->insert_query('reputation', $reputation);
 
       $query = $db->simple_select("reputation", "SUM(reputation) AS reputation_count", "uid='{$warning['uid']}'");
-		$reputation_value = $db->fetch_field($query, "reputation_count");
-		$db->update_query("users", array('reputation' => (int)$reputation_value), "uid='{$warning['uid']}'");
+      $reputation_value = $db->fetch_field($query, "reputation_count");
+      $db->update_query("users", array('reputation' => (int)$reputation_value), "uid='{$warning['uid']}'");
    }
 }
